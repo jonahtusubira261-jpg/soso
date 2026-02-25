@@ -1,0 +1,16 @@
+# Web Server & Core
+django>=4.2,<5.0
+gunicorn
+uvicorn
+whitenoise  # Essential for serving static files on Render
+
+# Database
+psycopg2-binary  # Required for Render's PostgreSQL database
+dj-database-url
+
+# Images & Networking
+Pillow  # Required for your Listing images
+requests # Required for your image downloader script
+
+# Environment Variables
+python-dotenv
