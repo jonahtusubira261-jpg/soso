@@ -1,62 +1,84 @@
 {% extends 'core/base.html' %}
 {% block content %}
-
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-    
-    <div class="lg:col-span-7 space-y-8">
-        <div class="bg-white rounded-[3rem] p-4 md:p-8 shadow-sm border border-slate-100">
-            <img src="{{ listing.image.url }}" class="w-full h-[300px] md:h-[500px] object-contain rounded-2xl">
-        </div>
+<div class="max-w-6xl mx-auto px-4 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 bg-white p-8 md:p-12 rounded-[3.5rem] shadow-sm border border-slate-100">
         
-        <div class="px-2">
-            <h1 class="text-4xl font-black text-slate-900 leading-tight">{{ listing.title }}</h1>
-            <div class="flex items-center gap-4 mt-4">
-                <div class="flex items-center gap-2">
-                    <img src="{{ listing.trader.profile.avatar.url }}" class="w-10 h-10 rounded-full">
-                    <div>
-                        <p class="text-sm font-bold text-slate-800">{{ listing.trader.username }}</p>
-                        <p class="text-[10px] text-green-500 font-bold uppercase tracking-tighter">
-                            <i class="fa-solid fa-shield-check"></i> Trust Score: {{ listing.trader.profile.trust_score }}%
-                        </p>
-                    </div>
+        <div class="rounded-[2.5rem] overflow-hidden bg-slate-100 h-[400px] md:h-[600px] sticky top-24">
+            {% if listing.image %}
+                <img src="{{ listing.image.url }}" class="w-full h-full object-cover">
+            {% else %}
+                <div class="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
+                    <i class="fa-solid fa-image text-6xl"></i>
                 </div>
-            </div>
-            <p class="mt-6 text-slate-600 leading-relaxed text-lg">{{ listing.description }}</p>
+            {% endif %}
         </div>
-    </div>
 
-    <div class="lg:col-span-5 space-y-6">
-        <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/50">
-            <div class="flex justify-between items-start mb-6">
-                <div>
-                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Listing Price</p>
-                    <p class="text-5xl font-black text-indigo-600">${{ listing.price }}</p>
-                </div>
-                <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-bold">{{ listing.trade_type }}</span>
+        <div class="flex flex-col justify-center">
+            <nav class="flex gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                <a href="{% url 'core:index' %}" class="hover:text-indigo-600">Market</a>
+                <span>/</span>
+                <span class="text-indigo-600">{{ listing.category.name }}</span>
+            </nav>
+
+            <h1 class="text-4xl md:text-6xl font-black text-slate-900 mb-6 leading-tight italic uppercase tracking-tighter">
+                {{ listing.title }}
+            </h1>
+            
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-4xl font-black text-indigo-600">${{ listing.price }}</span>
+                <span class="bg-slate-100 text-slate-500 px-4 py-1.5 rounded-full text-xs font-bold uppercase">
+                    Condition: {{ listing.condition|default:"Standard" }}
+                </span>
             </div>
 
-            <div class="space-y-3">
-                <button class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-slate-800 transition shadow-lg shadow-slate-200">
-                    Buy Now <i class="fa-solid fa-bolt ml-2 text-yellow-400"></i>
+            <p class="text-slate-500 text-lg leading-relaxed mb-10 border-l-4 border-indigo-100 pl-6">
+                {{ listing.description }}
+            </p>
+
+            <div class="space-y-4">
+                <button onclick="addToCart(event, '{{ listing.id }}')" 
+                        class="w-full bg-indigo-600 text-white py-6 rounded-3xl font-black text-xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-cart-plus"></i> ADD TO BUNDLE
                 </button>
                 
-                <a href="{% url 'negotiate' listing.pk %}" class="block w-full text-center bg-white border-2 border-slate-100 text-slate-800 py-5 rounded-2xl font-black text-lg hover:border-indigo-600 hover:text-indigo-600 transition">
-                    Negotiate / Chat <i class="fa-solid fa-comments ml-2 text-indigo-500"></i>
-                </a>
+                {% if request.user != listing.trader %}
+                    <a href="{% url 'core:negotiate' listing.pk %}" 
+                       class="block w-full border-2 border-slate-900 text-slate-900 text-center py-6 rounded-3xl font-black text-xl hover:bg-slate-900 hover:text-white transition-all">
+                        <i class="fa-solid fa-comments mr-2"></i> NEGOTIATE PRICE
+                    </a>
+                {% else %}
+                    <div class="bg-slate-50 p-4 rounded-2xl text-center text-slate-400 font-bold text-sm italic">
+                        This is your listing
+                    </div>
+                {% endif %}
             </div>
-
-            <p class="text-center text-[10px] text-slate-400 mt-6 uppercase font-bold tracking-widest">
-                <i class="fa-solid fa-truck-fast mr-2"></i> Payment on Delivery Available
-            </p>
         </div>
-
-        {% if listing.trade_type == 'WHOLESALE' %}
-        <div class="bg-indigo-600 rounded-[2.5rem] p-6 text-white">
-            <h4 class="font-black text-xl mb-2">Wholesale Deal</h4>
-            <p class="text-indigo-100 text-sm">Minimum order: <strong>{{ listing.wholesale_data.min_order_qty }} {{ listing.wholesale_data.unit_name }}</strong></p>
-        </div>
-        {% endif %}
     </div>
 </div>
 
+<script>
+function addToCart(event, itemId) {
+    event.preventDefault();
+    fetch(`/add-to-cart/${itemId}/`, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            const badge = document.getElementById('cart-badge');
+            badge.innerText = data.cart_count;
+            badge.classList.add('scale-150', 'bg-green-500');
+            
+            const toast = document.getElementById('cart-toast');
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            
+            setTimeout(() => {
+                badge.classList.remove('scale-150', 'bg-green-500');
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 2500);
+        }
+    });
+}
+</script>
 {% endblock %}

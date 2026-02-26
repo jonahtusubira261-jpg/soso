@@ -3,6 +3,33 @@ from django.contrib.auth.models import User
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.db import models
+
+
+class TradeGroup(models.Model):
+    name = models.CharField(max_length=255)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_groups")
+    members = models.ManyToManyField(User, related_name="trade_groups")
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class GroupMessage(models.Model):
+    group = models.ForeignKey(TradeGroup, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class Cart(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    items = models.ManyToManyField('Listing', through='CartItem')
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    listing = models.ForeignKey('Listing', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
 
 # --- 1. THE TRUST LAYER ---
 class Profile(models.Model):
@@ -61,7 +88,13 @@ class Listing(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    image = models.ImageField(upload_to='listings/')
+    image = models.ImageField(upload_to='listings/', blank=True, null=True)
+
+    @property
+    def image_url(self):
+        if self.image and hasattr(self.image, 'url'):
+            return self.image.url
+        return '/static/images/default-placeholder.png'
     
     # Pricing
     price = models.DecimalField(max_digits=12, decimal_places=2)

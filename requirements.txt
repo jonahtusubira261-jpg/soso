@@ -14,3 +14,7 @@ requests # Required for your image downloader script
 
 # Environment Variables
 python-dotenv
+
+daphne
+channels
+channels-redis

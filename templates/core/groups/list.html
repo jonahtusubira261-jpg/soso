@@ -1,0 +1,25 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-4xl font-black text-slate-900 italic">TRADE GROUPS</h1>
+        <a href="#" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition">Create Group</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {% for group in groups %}
+        <div class="bg-white border-2 border-slate-100 rounded-3xl p-6 hover:shadow-xl transition">
+            <div class="w-16 h-16 bg-indigo-100 rounded-2xl mb-4 flex items-center justify-center text-2xl">
+                🤝
+            </div>
+            <h3 class="text-xl font-bold mb-2">{{ group.name }}</h3>
+            <p class="text-slate-500 text-sm mb-4 line-clamp-2">{{ group.description }}</p>
+            <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-400">{{ group.members.count }} Members</span>
+                <a href="{% url 'group_detail' group.id %}" class="text-indigo-600 font-bold hover:underline">Join Chat →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

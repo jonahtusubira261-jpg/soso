@@ -18,17 +18,34 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['.render.com', 'localhost', '127.0.0.1']
 
 
-# --- APPLICATION DEFINITION ---
+# 1. Add daphne at the VERY TOP of INSTALLED_APPS
 INSTALLED_APPS = [
+    'daphne', 
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'whitenoise.runserver_nostatic', # For static file handling
     'django.contrib.staticfiles',
     'core',
 ]
+
+# 2. Change WSGI to ASGI
+# WSGI_APPLICATION = 'soso_config.wsgi.application' # Comment this out
+# settings.py
+ASGI_APPLICATION = 'soso_config.asgi.application'
+
+# 3. Configure Redis Channel Layer
+# On Render, you will add REDIS_URL to your environment variables
+import os
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')],
+        },
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -41,7 +58,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'soso_project.urls'
+ROOT_URLCONF = 'soso_config.urls'
 
 TEMPLATES = [
     {
@@ -60,7 +77,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'soso_project.wsgi.application'
 
 
 # --- DATABASE ---

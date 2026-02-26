@@ -5,6 +5,80 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from .models import Listing, Category, Conversation, Message, Profile
 from .forms import ListingForm, WholesaleForm, ServiceForm
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from .models import TradeGroup, Listing, Cart, CartItem
+# --- CART VIEWS ---
+from django.http import JsonResponse
+
+from django.db.models import F, Sum
+
+
+# --- TRADE GROUP VIEWS ---
+@login_required
+def group_list(request):
+    groups = TradeGroup.objects.all()
+    return render(request, 'core/groups/list.html', {'groups': groups})
+
+@login_required
+def group_detail(request, group_id):
+    group = get_object_or_404(TradeGroup, id=group_id)
+    if request.user not in group.members.all():
+        group.members.add(request.user) # Auto-join for now
+    messages = group.messages.all().order_by('timestamp')
+    return render(request, 'core/groups/detail.html', {'group': group, 'messages': messages})
+
+
+@login_required
+def add_to_cart(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id)
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    item, created = CartItem.objects.get_or_create(cart=cart, listing=listing)
+    
+    if not created:
+        item.quantity += 1
+        item.save()
+    
+    # Check if request is AJAX
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        total_items = sum(i.quantity for i in cart.items.all())
+        return JsonResponse({'status': 'ok', 'cart_count': total_items})
+    
+    # If a normal link click (from cart page), redirect back to cart
+    return redirect('core:cart_detail')
+
+@login_required
+def reduce_cart_item(request, listing_id):
+    cart = get_object_or_404(Cart, user=request.user)
+    item = get_object_or_404(CartItem, cart=cart, listing_id=listing_id)
+    
+    if item.quantity > 1:
+        item.quantity -= 1
+        item.save()
+    else:
+        item.delete()
+        
+    return redirect('core:cart_detail')
+
+@login_required
+def cart_detail(request):
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    
+    # Calculate Total Price for the bundle
+    # We multiply price by quantity for each item and sum them up
+    total_price = 0
+    for item in cart.items.all():
+        total_price += item.listing.price * item.quantity
+        
+    return render(request, 'core/cart.html', {
+        'cart': cart,
+        'total_price': total_price
+    })
+
+@login_required
+def cart_detail(request):
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    return render(request, 'core/cart.html', {'cart': cart})
 
 # --- DISCOVERY ---
 def index(request):
@@ -84,18 +158,22 @@ def create_listing(request):
         's_form': s_form
     })
 
+
 # --- SOCIAL/NEGOTIATION ---
 @login_required
 def negotiate(request, pk):
-    """Start or resume a 1-on-1 haggling session"""
     listing = get_object_or_404(Listing, pk=pk)
     
+    # Don't let traders talk to themselves
     if listing.trader == request.user:
-        return redirect('product_detail', pk=pk) # Can't haggle with yourself
+        return redirect('core:product_detail', pk=pk)
 
+    # Find or create a unique conversation for this specific buyer, trader, and item
     convo, created = Conversation.objects.get_or_create(
         buyer=request.user,
         trader=listing.trader,
         listing=listing
     )
+    
+    # Redirect to the chat page (ensure this URL name exists in your urls.py)
     return render(request, 'core/chat.html', {'conversation': convo})
