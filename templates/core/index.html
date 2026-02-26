@@ -1,77 +1,280 @@
 {% extends 'core/base.html' %}
+{% load static %}
+
 {% block content %}
-
-<div class="w-full h-48 md:h-80 rounded-[2.5rem] bg-gradient-to-r from-indigo-900 via-indigo-600 to-purple-600 relative overflow-hidden mb-10 shadow-xl shadow-indigo-100">
-    <div class="absolute inset-0 flex items-center p-8 md:p-16 text-white z-10">
-        <div class="max-w-lg">
-            <span class="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest">Live Now</span>
-            <h2 class="text-3xl md:text-5xl font-black mt-4 leading-tight">Trade Goods & <br>Services Instantly</h2>
-            <button class="mt-6 bg-white text-indigo-600 px-8 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 transition">Explore Now</button>
-        </div>
-    </div>
-    <i class="fa-solid fa-bolt absolute -right-10 -bottom-10 text-white/10 text-[200px] rotate-12"></i>
-</div>
-
-<div class="flex items-center justify-between mb-8 px-2">
-    <h3 class="text-2xl font-black text-slate-800 italic uppercase tracking-tighter">Featured Listings</h3>
-</div>
-
-<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 md:gap-6 px-2">
-    {% for item in listings %}
-    <div class="group bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-100 transition-all duration-300">
-        <a href="{% url 'core:product_detail' item.pk %}">
-            <div class="relative h-40 md:h-48 overflow-hidden bg-slate-100">
-                {% if item.image %}
-                    <img src="{{ item.image.url }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+<!-- Carousel Section -->
+{% if featured_listings %}
+<div class="relative mb-8 overflow-hidden rounded-3xl">
+    <div id="carousel" class="flex transition-transform duration-500 ease-in-out">
+        {% for featured in featured_listings %}
+        <div class="w-full flex-shrink-0">
+            <a href="{% url 'core:product_detail' featured.pk %}" class="block relative h-64 md:h-96">
+                {% if featured.media %}
+                    {% if featured.is_video %}
+                    <video class="w-full h-full object-cover" autoplay muted loop>
+                        <source src="{{ featured.media.url }}" type="video/mp4">
+                    </video>
+                    {% else %}
+                    <img src="{{ featured.media.url }}" class="w-full h-full object-cover">
+                    {% endif %}
                 {% else %}
-                    <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-image text-2xl"></i></div>
+                <div class="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <span class="text-white text-4xl font-black">{{ featured.title }}</span>
+                </div>
                 {% endif %}
-            </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+                    <h3 class="text-white text-2xl font-bold">{{ featured.title }}</h3>
+                    <p class="text-indigo-300">${{ featured.price }}</p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Carousel Controls -->
+    <button id="prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg hover:bg-white">
+        ←
+    </button>
+    <button id="next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg hover:bg-white">
+        →
+    </button>
+    
+    <!-- Dots -->
+    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        {% for featured in featured_listings %}
+        <button class="carousel-dot w-2 h-2 rounded-full bg-white/50 hover:bg-white" data-index="{{ forloop.counter0 }}"></button>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Carousel functionality
+const carousel = document.getElementById('carousel');
+const slides = carousel.children;
+const totalSlides = slides.length;
+let currentIndex = 0;
+
+function updateCarousel() {
+    carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+    document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+        dot.classList.toggle('bg-white', i === currentIndex);
+        dot.classList.toggle('bg-white/50', i !== currentIndex);
+    });
+}
+
+document.getElementById('next').addEventListener('click', () => {
+    currentIndex = (currentIndex + 1) % totalSlides;
+    updateCarousel();
+});
+
+document.getElementById('prev').addEventListener('click', () => {
+    currentIndex = (currentIndex - 1 + totalSlides) % totalSlides;
+    updateCarousel();
+});
+
+document.querySelectorAll('.carousel-dot').forEach(dot => {
+    dot.addEventListener('click', (e) => {
+        currentIndex = parseInt(e.target.dataset.index);
+        updateCarousel();
+    });
+});
+
+// Auto-advance every 5 seconds
+setInterval(() => {
+    currentIndex = (currentIndex + 1) % totalSlides;
+    updateCarousel();
+}, 5000);
+</script>
+{% endif %}
+
+<!-- Hero Section -->
+<div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-8 mb-8">
+    <h1 class="text-5xl font-black mb-2">SOSO <span class="text-indigo-600">Market</span></h1>
+    <p class="text-slate-600 text-lg">Bundle, Haggle, Trade — The Wild West of E-commerce</p>
+</div>
+
+<!-- Categories -->
+<div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+    <a href="{% url 'core:index' %}" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold whitespace-nowrap">All Items</a>
+    {% for category in categories %}
+    <a href="#" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold whitespace-nowrap hover:bg-indigo-100 transition">{{ category.name }}</a>
+    {% endfor %}
+</div>
+
+<!-- Products Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for item in listings %}
+    <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <!-- Image/Video Container -->
+        <a href="{% url 'core:product_detail' item.pk %}" class="block aspect-square bg-slate-100 overflow-hidden relative">
+            {% if item.media %}
+                {% if item.is_video %}
+                    <video class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" muted loop 
+                           onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0;">
+                        <source src="{{ item.media.url }}" type="video/mp4">
+                    </video>
+                {% else %}
+                    <img src="{{ item.media.url }}" alt="{{ item.title }}" 
+                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                {% endif %}
+            {% else %}
+                <div class="w-full h-full flex items-center justify-center bg-slate-200">
+                    <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+            {% endif %}
+            
+            <!-- Trade Type Badge -->
+            <span class="absolute top-2 left-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                {{ item.get_trade_type_display }}
+            </span>
+            
+            <!-- Condition Badge -->
+            {% if item.condition != 'NONE' %}
+            <span class="absolute top-2 right-2 bg-white/90 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                {{ item.get_condition_display }}
+            </span>
+            {% endif %}
         </a>
 
+        <!-- Product Info -->
         <div class="p-4">
-            <p class="text-[10px] text-slate-400 font-bold uppercase truncate">{{ item.category.name }}</p>
-            <h4 class="font-bold text-slate-800 truncate text-sm mt-1">{{ item.title }}</h4>
-            <div class="flex justify-between items-center mt-3">
-                <span class="text-indigo-600 font-black text-base">${{ item.price }}</span>
+            <div class="mb-2">
+                <p class="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-1">{{ item.category.name }}</p>
+                <h3 class="font-bold text-slate-800 truncate">{{ item.title }}</h3>
             </div>
             
-            <button onclick="addToCart(event, '{{ item.id }}')" class="w-full bg-slate-900 text-white text-center py-2.5 rounded-xl font-bold text-[11px] mt-3 hover:bg-indigo-600 transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-plus"></i> Add to Bundle
-            </button>
+            <!-- Price -->
+            <div class="flex items-baseline gap-2 mb-3">
+                <span class="text-2xl font-black text-indigo-600">${{ item.price }}</span>
+                {% if item.trade_type == 'WHOLESALE' and item.wholesale_data %}
+                <span class="text-[10px] text-slate-400">Min: {{ item.wholesale_data.min_order_qty }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Trader Info -->
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <span class="text-indigo-600 font-black text-xs">{{ item.trader.username|slice:":1"|upper }}</span>
+                </div>
+                <span class="text-xs text-slate-500">{{ item.trader.username }}</span>
+                <span class="text-[8px] text-green-600 font-bold">● {{ item.trader.profile.trust_score }}%</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2">
+                {% if request.user == item.trader %}
+                    <!-- Owner: Remove Listing -->
+                    <a href="{% url 'core:delete_listing' item.pk %}" 
+                       onclick="return confirm('Are you sure you want to remove this listing?');"
+                       class="w-full bg-red-500 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-red-600 transition flex items-center justify-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        REMOVE
+                    </a>
+                {% else %}
+                    <!-- Add to Bundle Button -->
+                    <button onclick="addToBundle(event, '{{ item.id }}')" 
+                            class="flex-1 bg-slate-900 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-600 transition flex items-center justify-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        BUNDLE
+                    </button>
+                    
+                    <!-- Negotiate Button -->
+                    <a href="{% url 'core:negotiate' item.pk %}" 
+                       class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        CHAT
+                    </a>
+                {% endif %}
+            </div>
         </div>
+    </div>
+    {% empty %}
+    <!-- Empty State -->
+    <div class="col-span-full text-center py-16">
+        <div class="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">No items yet</h3>
+        <p class="text-slate-400 mb-4">Be the first to list something!</p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'core:create_listing' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
+            SELL SOMETHING
+        </a>
+        {% else %}
+        <a href="{% url 'core:login' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
+            LOGIN TO SELL
+        </a>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
 
+<!-- JavaScript for Add to Bundle -->
 <script>
-function addToCart(event, itemId) {
+function addToBundle(event, listingId) {
     event.preventDefault();
-    const url = `/add-to-cart/${itemId}/`;
-
-    fetch(url, {
-        method: 'GET',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    event.stopPropagation();
+    
+    fetch(`/add-to-cart/${listingId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'ok') {
-            // Update Navbar Badge
-            const badge = document.getElementById('cart-badge');
-            badge.innerText = data.cart_count;
-            badge.classList.add('scale-125', 'bg-green-500');
+            // Update cart count in navbar
+            const cartBadge = document.querySelector('.cart-count');
+            if (cartBadge) {
+                cartBadge.textContent = data.cart_count;
+                cartBadge.classList.remove('hidden');
+            } else {
+                // Create badge if it doesn't exist
+                const cartIcon = document.querySelector('.relative');
+                if (cartIcon && data.cart_count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold cart-count';
+                    badge.textContent = data.cart_count;
+                    cartIcon.appendChild(badge);
+                }
+            }
             
-            // Show Toast
-            const toast = document.getElementById('cart-toast');
-            toast.classList.remove('translate-y-24', 'opacity-0');
-            
+            // Show success message on button
+            const button = event.currentTarget;
+            const originalText = button.innerHTML;
+            button.innerHTML = '✓ ADDED';
+            button.classList.add('bg-green-600');
+            button.classList.remove('bg-slate-900');
             setTimeout(() => {
-                badge.classList.remove('scale-125', 'bg-green-500');
-                toast.classList.add('translate-y-24', 'opacity-0');
-            }, 2000);
+                button.innerHTML = originalText;
+                button.classList.remove('bg-green-600');
+                button.classList.add('bg-slate-900');
+            }, 1500);
         }
     })
     .catch(error => console.error('Error:', error));
 }
+
+// Auto-play videos on hover
+document.querySelectorAll('video').forEach(video => {
+    video.addEventListener('mouseenter', () => video.play());
+    video.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0;
+    });
+});
 </script>
 {% endblock %}

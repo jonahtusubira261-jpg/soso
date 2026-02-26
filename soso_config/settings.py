@@ -2,6 +2,11 @@ import os
 from pathlib import Path
 import dj_database_url # For the PostgreSQL database
 from dotenv import load_dotenv # To keep secrets safe
+# Cloudinary settings
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
 
 load_dotenv()
 
@@ -17,6 +22,21 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 # Add your Render URL to allowed hosts
 ALLOWED_HOSTS = ['.render.com', 'localhost', '127.0.0.1']
 
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'db1fv7d4m',
+    'API_KEY': '612896558783591',
+    'API_SECRET': 'HOrXHUoPTf8m8HGSBo05utem5kc'
+}
+
+# This is the missing part - configure cloudinary directly
+cloudinary.config(
+    cloud_name = CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key = CLOUDINARY_STORAGE['API_KEY'],
+    api_secret = CLOUDINARY_STORAGE['API_SECRET']
+)
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # 1. Add daphne at the VERY TOP of INSTALLED_APPS
 INSTALLED_APPS = [

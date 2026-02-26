@@ -1,69 +1,115 @@
 {% extends 'core/base.html' %}
+{% load static %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto py-10 px-4" x-data="{ tradeType: 'RETAIL' }">
-    <div class="mb-10">
-        <h1 class="text-4xl font-black text-slate-900 tracking-tighter">New Listing</h1>
-        <p class="text-slate-500">Post your good or service to the Soso network.</p>
+<div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-black mb-2">List Your <span class="text-indigo-600">Item</span></h1>
+        <p class="text-slate-400 font-bold text-sm">Join the SOSO marketplace and start trading</p>
     </div>
 
-    <form method="POST" enctype="multipart/form-data" class="space-y-8">
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="space-y-8">
         {% csrf_token %}
-
-        <div class="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-            <h3 class="text-sm font-black text-indigo-600 uppercase tracking-widest border-b border-slate-50 pb-4">General Details</h3>
+        
+        <!-- Main Listing Form -->
+        <div class="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+            <h2 class="font-black text-sm text-slate-400 uppercase tracking-widest mb-4">Basic Information</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for field in l_form %}
-                    <div class="flex flex-col gap-1 {% if field.name == 'description' or field.name == 'title' %}md:col-span-2{% endif %}">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ field.label }}</label>
-                        {{ field }}
-                        
-                        {% if field.name == "trade_type" %}
-                            <template x-effect="tradeType = $el.querySelector('select').value || 'RETAIL'"></template>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+            {% for field in l_form %}
+            <div class="flex flex-col gap-1 {% if field.name == 'description' or field.name == 'title' %}md:col-span-2{% endif %}">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <p class="text-[9px] text-slate-400 mt-1">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                <p class="text-red-500 text-[10px] italic">{{ field.errors.0 }}</p>
+                {% endif %}
             </div>
+            {% endfor %}
         </div>
 
-        <div x-show="tradeType === 'WHOLESALE'" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform -translate-y-4"
-             class="bg-indigo-50 p-6 md:p-10 rounded-[2.5rem] border border-indigo-100 space-y-6">
-            <h3 class="text-sm font-black text-indigo-600 uppercase tracking-widest">Wholesale Requirements</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for field in w_form %}
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">{{ field.label }}</label>
-                        {{ field }}
-                    </div>
-                {% endfor %}
+        <!-- Wholesale Fields (shown conditionally) -->
+        <div id="wholesale-fields" class="bg-white rounded-3xl border border-indigo-100 p-6 space-y-4" style="display: none;">
+            <h2 class="font-black text-sm text-indigo-400 uppercase tracking-widest mb-4">Wholesale Details</h2>
+            {% for field in w_form %}
+            <div class="flex flex-col gap-1">
+                <label class="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">{{ field.label }}</label>
+                {{ field }}
             </div>
+            {% endfor %}
         </div>
 
-        <div x-show="tradeType === 'SERVICE'" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform -translate-y-4"
-             class="bg-purple-50 p-6 md:p-10 rounded-[2.5rem] border border-purple-100 space-y-6">
-            <h3 class="text-sm font-black text-purple-600 uppercase tracking-widest">Service & Hailing Info</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for field in s_form %}
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] font-black text-purple-400 uppercase tracking-widest px-1">{{ field.label }}</label>
-                        {{ field }}
-                    </div>
-                {% endfor %}
+        <!-- Service Fields (shown conditionally) -->
+        <div id="service-fields" class="bg-white rounded-3xl border border-purple-100 p-6 space-y-4" style="display: none;">
+            <h2 class="font-black text-sm text-purple-400 uppercase tracking-widest mb-4">Service Details</h2>
+            {% for field in s_form %}
+            <div class="flex flex-col gap-1">
+                <label class="text-[10px] font-black text-purple-400 uppercase tracking-widest px-1">{{ field.label }}</label>
+                {{ field }}
             </div>
+            {% endfor %}
+            <p class="text-[9px] text-slate-400 mt-2">Your location will be detected automatically</p>
         </div>
 
+        <!-- Form Actions -->
         <div class="flex gap-4">
-            <button type="submit" class="flex-1 bg-indigo-600 text-white py-5 rounded-[2rem] font-black text-xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition transform active:scale-95">
-                Publish Listing <i class="fa-solid fa-paper-plane ml-2"></i>
+            <button type="submit" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-indigo-700 transition">
+                LIST ITEM →
             </button>
-            <a href="{% url 'index' %}" class="px-8 flex items-center justify-center bg-white text-slate-400 rounded-[2rem] border border-slate-200 font-bold hover:text-slate-600">
-                Cancel
+            <a href="{% url 'core:index' %}" class="px-8 flex items-center justify-center bg-white text-slate-400 rounded-2xl border border-slate-200 font-bold hover:text-slate-600 transition">
+                CANCEL
             </a>
         </div>
     </form>
 </div>
+
+<script>
+// Show/hide conditional fields based on trade type
+document.addEventListener('DOMContentLoaded', function() {
+    const tradeTypeField = document.querySelector('[name="trade_type"]');
+    const wholesaleFields = document.getElementById('wholesale-fields');
+    const serviceFields = document.getElementById('service-fields');
+    
+    function toggleFields() {
+        const tradeType = tradeTypeField.value;
+        
+        wholesaleFields.style.display = tradeType === 'WHOLESALE' ? 'block' : 'none';
+        serviceFields.style.display = tradeType === 'SERVICE' ? 'block' : 'none';
+    }
+    
+    if (tradeTypeField) {
+        tradeTypeField.addEventListener('change', toggleFields);
+        toggleFields(); // Initial state
+    }
+});
+
+// Get user location for service listings
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            document.querySelector('[name="location_lat"]').value = position.coords.latitude;
+            document.querySelector('[name="location_lon"]').value = position.coords.longitude;
+        });
+    }
+}
+
+// Auto-detect location when service fields are shown
+document.addEventListener('DOMContentLoaded', function() {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.target.style.display === 'block') {
+                getLocation();
+            }
+        });
+    });
+    
+    const serviceFields = document.getElementById('service-fields');
+    if (serviceFields) {
+        observer.observe(serviceFields, { attributes: true, attributeFilter: ['style'] });
+    }
+});
+</script>
 {% endblock %}
