@@ -23,13 +23,15 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['.render.com', 'localhost', '127.0.0.1']
 
 
+# --- CLOUDINARY CONFIGURATION ---
+# We use os.environ.get to pull from .env locally or Render in production
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'db1fv7d4m',
-    'API_KEY': '612896558783591',
-    'API_SECRET': 'HOrXHUoPTf8m8HGSBo05utem5kc'
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET')
 }
 
-# This is the missing part - configure cloudinary directly
+# Configure cloudinary directly using the environment variables
 cloudinary.config(
     cloud_name = CLOUDINARY_STORAGE['CLOUD_NAME'],
     api_key = CLOUDINARY_STORAGE['API_KEY'],
