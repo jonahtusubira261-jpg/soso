@@ -15,64 +15,30 @@ class BaseStyledFormMixin:
                 })
 
 class SosoSignupForm(BaseStyledFormMixin, UserCreationForm):
-    email = forms.EmailField(required=True, help_text='Required. Enter a valid email address.')
-    
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "email", "password1", "password2")
-    
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data["email"]
-        if commit:
-            user.save()
-        return user
+        fields = ("username", "email") # Password fields are handled by UserCreationForm
 
 class ListingForm(BaseStyledFormMixin, forms.ModelForm):
     class Meta:
         model = Listing
-        fields = [
-            'category', 'title', 'description', 'media',
-            'price', 'trade_type', 'condition', 'auction_end'
-        ]
+        fields = ['category', 'title', 'description', 'media', 'price', 'trade_type', 'condition', 'auction_end']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Tell the Wild West about your item...'}),
             'auction_end': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
-        }
-        labels = {
-            'trade_type': 'Mode of Trade',
-            'auction_end': 'Auction End Time (If Auction)',
-            'media': 'Upload Image or Video',
         }
 
 class WholesaleForm(BaseStyledFormMixin, forms.ModelForm):
     class Meta:
         model = WholesaleDetail
         fields = ['min_order_qty', 'unit_name']
-        labels = {
-            'min_order_qty': 'Minimum Order Quantity',
-            'unit_name': 'Measurement Unit (e.g. Bags, Tons, Crates)',
-        }
 
 class ServiceForm(BaseStyledFormMixin, forms.ModelForm):
     class Meta:
         model = ServiceDetail
         fields = ['vehicle_info', 'location_lat', 'location_lon']
-        labels = {
-            'vehicle_info': 'Vehicle/Provider Details',
-            'location_lat': 'Current Latitude',
-            'location_lon': 'Current Longitude',
-        }
         widgets = {
             'location_lat': forms.HiddenInput(),
             'location_lon': forms.HiddenInput(),
-        }
-
-class ProfileUpdateForm(BaseStyledFormMixin, forms.ModelForm):
-    class Meta:
-        model = Profile
-        fields = ['avatar', 'bio', 'location_name', 'phone_number']
-        widgets = {
-            'bio': forms.Textarea(attrs={'rows': 3}),
         }

@@ -88,21 +88,28 @@ field.widget.attrs.update({
 class SosoSignupForm(BaseStyledFormMixin, UserCreationForm):
 class Meta(UserCreationForm.Meta):
 model = User
-fields = ("username", "email")
+fields = ("username", "email", "password1", "password2")
+def save(self, commit=True):
+user = super().save(commit=False)
+user.email = self.cleaned_data["email"]
+if commit:
+user.save()
+return user
 class ListingForm(BaseStyledFormMixin, forms.ModelForm):
 model = Listing
 fields = [
-'category', 'title', 'description', 'image',
+'category', 'title', 'description', 'media',
 'price', 'trade_type', 'condition', 'auction_end'
 ]
 widgets = {
 'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Tell the Wild West about your item...'}),
 'auction_end': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-'image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
 }
 labels = {
 'trade_type': 'Mode of Trade',
 'auction_end': 'Auction End Time (If Auction)',
+'media': 'Upload Image or Video',
 }
 class WholesaleForm(BaseStyledFormMixin, forms.ModelForm):
 model = WholesaleDetail
@@ -135,7 +142,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-from django.db import models
+from cloudinary.models import CloudinaryField
 class TradeGroup(models.Model):
 name = models.CharField(max_length=255)
 creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_groups")
@@ -148,17 +155,10 @@ group = models.ForeignKey(TradeGroup, on_delete=models.CASCADE, related_name="me
 sender = models.ForeignKey(User, on_delete=models.CASCADE)
 content = models.TextField()
 timestamp = models.DateTimeField(auto_now_add=True)
-class Cart(models.Model):
-user = models.OneToOneField(User, on_delete=models.CASCADE)
-items = models.ManyToManyField('Listing', through='CartItem')
-class CartItem(models.Model):
-cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
-listing = models.ForeignKey('Listing', on_delete=models.CASCADE)
-quantity = models.PositiveIntegerField(default=1)
 class Profile(models.Model):
 user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
 is_trader = models.BooleanField(default=False)
-avatar = models.ImageField(upload_to='avatars/', default='default_avatar.png')
+avatar = CloudinaryField('avatar', folder='avatars/', blank=True, null=True)
 bio = models.TextField(blank=True)
 trust_score = models.IntegerField(default=100)
 location_name = models.CharField(max_length=255, blank=True)
@@ -196,12 +196,17 @@ trader = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listing
 category = models.ForeignKey(Category, on_delete=models.CASCADE)
 title = models.CharField(max_length=255)
 description = models.TextField()
-image = models.ImageField(upload_to='listings/', blank=True, null=True)
+media = CloudinaryField('media', folder='listings/', resource_type='auto', blank=True, null=True)
 @property
-def image_url(self):
-if self.image and hasattr(self.image, 'url'):
-return self.image.url
+def media_url(self):
+if self.media:
+return self.media.url
 return '/static/images/default-placeholder.png'
+@property
+def is_video(self):
+if self.media:
+return self.media.resource_type == 'video'
+return False
 price = models.DecimalField(max_digits=12, decimal_places=2)
 trade_type = models.CharField(max_length=20, choices=TRADE_TYPES, default='RETAIL')
 condition = models.CharField(max_length=10, choices=CONDITION, default='NEW')
@@ -219,6 +224,7 @@ return self.title
 class WholesaleDetail(models.Model):
 listing = models.OneToOneField(Listing, on_delete=models.CASCADE, related_name='wholesale_data')
 min_order_qty = models.PositiveIntegerField(default=1)
+unit_name = models.CharField(max_length=50, default='unit')
 class ServiceDetail(models.Model):
 listing = models.OneToOneField(Listing, on_delete=models.CASCADE, related_name='service_data')
 is_available = models.BooleanField(default=True)
@@ -237,8 +243,8 @@ listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
 created_at = models.DateTimeField(auto_now_add=True)
 unique_together = ('buyer', 'trader', 'listing')
 class Message(models.Model):
-conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages',null=True)
-sender = models.ForeignKey(User, on_delete=models.CASCADE,null=True)
+conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages', null=True)
+sender = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 text = models.TextField()
 is_offer = models.BooleanField(default=False)
 offered_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -248,10 +254,12 @@ class Cart(models.Model):
 user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 session_key = models.CharField(max_length=40, null=True, blank=True)
 created_at = models.DateTimeField(auto_now_add=True)
+return f"Cart {self.id}"
 class CartItem(models.Model):
 cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
 listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
 quantity = models.PositiveIntegerField(default=1)
+return f"{self.quantity} x {self.listing.title}"
 
 === core/routing.py ===
 from django.urls import re_path
@@ -282,7 +290,7 @@ path('', views.index, name='index'),
 path('product/<int:pk>/', views.product_detail, name='product_detail'),
 path('negotiate/<int:pk>/', views.negotiate, name='negotiate'),
 path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
-path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+path('logout/', auth_views.LogoutView.as_view(next_page='core:index'), name='logout'),
 path('signup/', views.signup, name='signup'),
 path('groups/', views.group_list, name='group_list'),
 path('groups/<int:group_id>/', views.group_detail, name='group_detail'),
@@ -290,39 +298,52 @@ path('cart/', views.cart_detail, name='cart_detail'),
 path('cart/reduce/<int:listing_id>/', views.reduce_cart_item, name='reduce_cart_item'),
 path('add-to-cart/<int:listing_id>/', views.add_to_cart, name='add_to_cart'),
 path('list-item/', views.create_listing, name='create_listing'),
+path('delete-listing/<int:pk>/', views.delete_listing, name='delete_listing'),
+path('search/', views.search_autocomplete, name='search'),
 ]
 
 === core/views.py ===
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
-from .models import Listing, Category, Conversation, Message, Profile
-from .forms import ListingForm, WholesaleForm, ServiceForm
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import TradeGroup, Listing, Cart, CartItem
 from django.http import JsonResponse
-from django.db.models import F, Sum
-@login_required
-def group_list(request):
-groups = TradeGroup.objects.all()
-return render(request, 'core/groups/list.html', {'groups': groups})
-@login_required
-def group_detail(request, group_id):
-group = get_object_or_404(TradeGroup, id=group_id)
-if request.user not in group.members.all():
-group.members.add(request.user)
-messages = group.messages.all().order_by('timestamp')
-return render(request, 'core/groups/detail.html', {'group': group, 'messages': messages})
+from django.db.models import Q, Sum
+from django.urls import reverse
+from .models import Listing, Category, Conversation, Message, Profile, Cart, CartItem, TradeGroup
+from .forms import ListingForm, WholesaleForm, ServiceForm, SosoSignupForm
+import json
+def index(request):
+listings = Listing.objects.filter(is_active=True).select_related('category', 'trader__profile').order_by('-created_at')
+featured_listings = listings[:5]
+categories = Category.objects.filter(parent=None)
+return render(request, 'core/index.html', {
+'listings': listings,
+'featured_listings': featured_listings,
+'categories': categories
+})
+def product_detail(request, pk):
+listing = get_object_or_404(Listing, pk=pk, is_active=True)
+related_listings = Listing.objects.filter(
+category=listing.category,
+is_active=True
+).exclude(pk=pk)[:4]
+return render(request, 'core/product_detail.html', {
+'listing': listing,
+'related_listings': related_listings
+})
 @login_required
 def add_to_cart(request, listing_id):
 listing = get_object_or_404(Listing, id=listing_id)
 cart, _ = Cart.objects.get_or_create(user=request.user)
-item, created = CartItem.objects.get_or_create(cart=cart, listing=listing)
+cart_item, created = CartItem.objects.get_or_create(cart=cart, listing=listing)
 if not created:
-item.quantity += 1
-item.save()
+cart_item.quantity += 1
+cart_item.save()
+total_items = cart.items.aggregate(total=Sum('quantity'))['total'] or 0
 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-total_items = sum(i.quantity for i in cart.items.all())
-return JsonResponse({'status': 'ok', 'cart_count': total_items})
+return JsonResponse({
+'status': 'ok',
+'cart_count': total_items,
+'message': f'{listing.title} added to bundle'
+})
 return redirect('core:cart_detail')
 @login_required
 def reduce_cart_item(request, listing_id):
@@ -337,32 +358,104 @@ return redirect('core:cart_detail')
 @login_required
 def cart_detail(request):
 cart, _ = Cart.objects.get_or_create(user=request.user)
-total_price = 0
-for item in cart.items.all():
-total_price += item.listing.price * item.quantity
+cart_items = cart.items.all().select_related('listing')
+total_price = sum(item.listing.price * item.quantity for item in cart_items)
+item_count = cart_items.count()
 return render(request, 'core/cart.html', {
 'cart': cart,
-'total_price': total_price
+'cart_items': cart_items,
+'total_price': total_price,
+'item_count': item_count
 })
 @login_required
-def cart_detail(request):
-cart, _ = Cart.objects.get_or_create(user=request.user)
-return render(request, 'core/cart.html', {'cart': cart})
-def index(request):
+def delete_listing(request, pk):
 listing = get_object_or_404(Listing, pk=pk)
-return render(request, 'core/product_detail.html', {'listing': listing})
+if request.user != listing.trader:
+return redirect('core:index')
+listing.delete()
+return redirect('core:index')
+def search_autocomplete(request):
+query = request.GET.get('q', '')
+if len(query) < 2:
+return JsonResponse({'results': []})
+listings = Listing.objects.filter(
+Q(title__icontains=query) | Q(description__icontains=query),
+is_active=True
+).select_related('category')[:10]
+results = []
+for listing in listings:
+results.append({
+'id': listing.id,
+'title': listing.title,
+'price': str(listing.price),
+'image_url': listing.media_url if listing.media else '/static/images/default-placeholder.png',
+'category': listing.category.name,
+'url': reverse('core:product_detail', args=[listing.id])
+})
+return JsonResponse({'results': results})
 def signup(request):
 if request.method == 'POST':
-form = UserCreationForm(request.POST)
+form = SosoSignupForm(request.POST)
 if form.is_valid():
 user = form.save()
 login(request, user)
-return redirect('index')
+return redirect('core:index')
 else:
-form = UserCreationForm()
+form = SosoSignupForm()
 return render(request, 'core/signup.html', {'form': form})
 @login_required
 def create_listing(request):
+if request.method == 'POST':
+l_form = ListingForm(request.POST, request.FILES)
+if l_form.is_valid():
+listing = l_form.save(commit=False)
+listing.trader = request.user
+listing.save()
+if listing.trade_type == 'WHOLESALE':
+w_form = WholesaleForm(request.POST, instance=listing)
+if w_form.is_valid():
+w_form.save()
+elif listing.trade_type == 'SERVICE':
+s_form = ServiceForm(request.POST, instance=listing)
+if s_form.is_valid():
+s_form.save()
+return redirect('core:product_detail', pk=listing.pk)
+else:
+l_form = ListingForm()
+w_form = WholesaleForm()
+s_form = ServiceForm()
+return render(request, 'core/create_listing.html', {
+'l_form': l_form,
+'w_form': w_form,
+'s_form': s_form
+})
+@login_required
+def negotiate(request, pk):
+listing = get_object_or_404(Listing, pk=pk)
+if request.user == listing.trader:
+return redirect('core:product_detail', pk=pk)
+conversation, created = Conversation.objects.get_or_create(
+buyer=request.user,
+trader=listing.trader,
+listing=listing
+)
+messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
+return render(request, 'core/chat.html', {
+'conversation': conversation,
+'listing': listing,
+'messages': messages
+})
+@login_required
+def group_list(request):
+groups = TradeGroup.objects.all()
+return render(request, 'core/groups/list.html', {'groups': groups})
+@login_required
+def group_detail(request, group_id):
+group = get_object_or_404(TradeGroup, id=group_id)
+if request.user not in group.members.all():
+group.members.add(request.user)
+messages = group.messages.all().order_by('timestamp')
+return render(request, 'core/groups/detail.html', {'group': group, 'messages': messages})
 
 === repo2.py ===
 import subprocess, sys, os, re
@@ -482,40 +575,52 @@ if settings.DEBUG:
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 === templates/core/base.html ===
-<a href="{% url 'core:index' %}" class="text-3xl font-black italic tracking-tighter text-indigo-600">SOSO.</a>
+<a href="{% url 'core:index' %}" class="text-3xl font-black italic tracking-tighter text-indigo-600 flex-shrink-0">SOSO.</a>
 <a href="{% url 'core:index' %}" class="hover:text-indigo-600 transition">Market</a>
 <a href="{% url 'core:group_list' %}" class="hover:text-indigo-600 transition">Trade Groups</a>
+{% if user.is_authenticated %}
+<a href="{% url 'core:create_listing' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-1">
+{% endif %}
 <a href="{% url 'core:cart_detail' %}" class="relative bg-slate-100 p-3 rounded-2xl hover:bg-indigo-50 transition group">
-{{ request.user.cart.items.count|default:0 }}
+{% if cart_count > 0 %}
+<span class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold cart-count">{{ cart_count }}</span>
+{% endif %}
 {% if request.user.is_authenticated %}
-{{ request.user.username|slice:":1"|upper }}
+<span class="text-indigo-600 font-black text-sm">{{ request.user.username|slice:":1"|upper }}</span>
+<span class="text-sm font-bold text-slate-700">{{ request.user.username }}</span>
+<form method="post" action="{% url 'core:logout' %}">
+{% csrf_token %}
 {% else %}
-<a href="{% url 'core:login' %}" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold text-sm">Login</a>
+<a href="{% url 'core:login' %}" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold text-sm">LOGIN</a>
 {% endif %}
 {% block content %}{% endblock %}
 
 === templates/core/cart.html ===
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
-Trade Bundle <span class="text-indigo-600">({{ cart.items.count }})</span>
-<a href="{% url 'core:index' %}" class="text-sm font-bold text-slate-400 hover:text-indigo-600 transition">
-{% if cart.items.all %}
-{% for item in cart.items.all %}
-{% if item.listing.image %}
-<img src="{{ item.listing.image.url }}" class="w-full h-full object-cover">
+<p class="text-slate-400 font-bold text-sm mb-8">{{ item_count }} item{{ item_count|pluralize }} in your bundle</p>
+{% if cart_items %}
+{% for item in cart_items %}
+{% if item.listing.media %}
+{% if item.listing.is_video %}
+<source src="{{ item.listing.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ item.listing.media.url }}" class="w-full h-full object-cover">
+{% endif %}
 {% else %}
 {% endif %}
-<h3 class="font-bold text-xl text-slate-800 leading-tight">{{ item.listing.title }}</h3>
-<p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">{{ item.listing.category.name }}</p>
-<p class="text-indigo-600 font-black text-lg mt-1">${{ item.listing.price }}</p>
+<h3 class="font-bold text-slate-800">{{ item.listing.title }}</h3>
+<p class="text-xs text-slate-400 font-bold uppercase">{{ item.listing.category.name }}</p>
+<p class="text-indigo-600 font-black mt-1">${{ item.listing.price }}</p>
 <a href="{% url 'core:reduce_cart_item' item.listing.id %}"
 <span class="font-black text-xl w-8 text-center">{{ item.quantity }}</span>
 <a href="{% url 'core:add_to_cart' item.listing.id %}"
-${{ item.listing.price|add:0 }} </p>
+<p class="font-black text-lg text-indigo-600">${{ item.listing.price|floatformat:2 }}</p>
 {% endfor %}
-${{ total_price }}
+<p class="text-3xl font-black">${{ total_price|floatformat:2 }}</p>
 {% else %}
-<a href="{% url 'core:index' %}" class="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-sm hover:bg-indigo-600 transition shadow-xl">
+<a href="{% url 'core:index' %}" class="inline-block bg-indigo-600 text-white px-8 py-3 rounded-xl font-black text-sm hover:bg-indigo-700 transition">
 {% endif %}
 {% endblock %}
 
@@ -541,13 +646,18 @@ const isMe = data.username === "{{ request.user.username }}";
 
 === templates/core/create_listing.html ===
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
 {% csrf_token %}
 {% for field in l_form %}
 <div class="flex flex-col gap-1 {% if field.name == 'description' or field.name == 'title' %}md:col-span-2{% endif %}">
 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ field.label }}</label>
 {{ field }}
-{% if field.name == "trade_type" %}
+{% if field.help_text %}
+<p class="text-[9px] text-slate-400 mt-1">{{ field.help_text }}</p>
+{% endif %}
+{% if field.errors %}
+<p class="text-red-500 text-[10px] italic">{{ field.errors.0 }}</p>
 {% endif %}
 {% endfor %}
 {% for field in w_form %}
@@ -558,7 +668,7 @@ const isMe = data.username === "{{ request.user.username }}";
 <label class="text-[10px] font-black text-purple-400 uppercase tracking-widest px-1">{{ field.label }}</label>
 {{ field }}
 {% endfor %}
-<a href="{% url 'index' %}" class="px-8 flex items-center justify-center bg-white text-slate-400 rounded-[2rem] border border-slate-200 font-bold hover:text-slate-600">
+<a href="{% url 'core:index' %}" class="px-8 flex items-center justify-center bg-white text-slate-400 rounded-2xl border border-slate-200 font-bold hover:text-slate-600 transition">
 {% endblock %}
 
 === templates/core/groups/detail.html ===
@@ -591,49 +701,156 @@ const isMe = data.username === "{{ request.user.username }}";
 
 === templates/core/index.html ===
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
+{% if featured_listings %}
+{% for featured in featured_listings %}
+<a href="{% url 'core:product_detail' featured.pk %}" class="block relative h-64 md:h-96">
+{% if featured.media %}
+{% if featured.is_video %}
+<source src="{{ featured.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ featured.media.url }}" class="w-full h-full object-cover">
+{% endif %}
+{% else %}
+<span class="text-white text-4xl font-black">{{ featured.title }}</span>
+{% endif %}
+<h3 class="text-white text-2xl font-bold">{{ featured.title }}</h3>
+<p class="text-indigo-300">${{ featured.price }}</p>
+{% endfor %}
+{% for featured in featured_listings %}
+<button class="carousel-dot w-2 h-2 rounded-full bg-white/50 hover:bg-white" data-index="{{ forloop.counter0 }}"></button>
+{% endfor %}
+{% endif %}
+<a href="{% url 'core:index' %}" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold whitespace-nowrap">All Items</a>
+{% for category in categories %}
+<a href="#" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold whitespace-nowrap hover:bg-indigo-100 transition">{{ category.name }}</a>
+{% endfor %}
 {% for item in listings %}
-<a href="{% url 'core:product_detail' item.pk %}">
-{% if item.image %}
-<img src="{{ item.image.url }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+<a href="{% url 'core:product_detail' item.pk %}" class="block aspect-square bg-slate-100 overflow-hidden relative">
+{% if item.media %}
+{% if item.is_video %}
+<source src="{{ item.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ item.media.url }}" alt="{{ item.title }}"
+{% endif %}
 {% else %}
 {% endif %}
-<p class="text-[10px] text-slate-400 font-bold uppercase truncate">{{ item.category.name }}</p>
-<h4 class="font-bold text-slate-800 truncate text-sm mt-1">{{ item.title }}</h4>
-<span class="text-indigo-600 font-black text-base">${{ item.price }}</span>
-<button onclick="addToCart(event, '{{ item.id }}')" class="w-full bg-slate-900 text-white text-center py-2.5 rounded-xl font-bold text-[11px] mt-3 hover:bg-indigo-600 transition flex items-center justify-center gap-2">
+{{ item.get_trade_type_display }}
+{% if item.condition != 'NONE' %}
+{{ item.get_condition_display }}
+{% endif %}
+<p class="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-1">{{ item.category.name }}</p>
+<h3 class="font-bold text-slate-800 truncate">{{ item.title }}</h3>
+<span class="text-2xl font-black text-indigo-600">${{ item.price }}</span>
+{% if item.trade_type == 'WHOLESALE' and item.wholesale_data %}
+<span class="text-[10px] text-slate-400">Min: {{ item.wholesale_data.min_order_qty }}</span>
+{% endif %}
+<span class="text-indigo-600 font-black text-xs">{{ item.trader.username|slice:":1"|upper }}</span>
+<span class="text-xs text-slate-500">{{ item.trader.username }}</span>
+<span class="text-[8px] text-green-600 font-bold">● {{ item.trader.profile.trust_score }}%</span>
+{% if request.user == item.trader %}
+<a href="{% url 'core:delete_listing' item.pk %}"
+{% else %}
+<button onclick="addToBundle(event, '{{ item.id }}')"
+<a href="{% url 'core:negotiate' item.pk %}"
+{% endif %}
+{% empty %}
+{% if user.is_authenticated %}
+<a href="{% url 'core:create_listing' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
+{% else %}
+<a href="{% url 'core:login' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
+{% endif %}
 {% endfor %}
+'X-CSRFToken': '{{ csrf_token }}',
 {% endblock %}
 
 === templates/core/login.html ===
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
 {% csrf_token %}
 {% for field in form %}
 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ field.label }}</label>
 {{ field }}
+{% if field.errors %}
+<p class="text-red-500 text-[10px] italic mt-1">{{ field.errors.0 }}</p>
+{% endif %}
 {% endfor %}
-<a href="{% url 'signup' %}" class="text-indigo-600 font-bold hover:underline">Create Account</a>
+<a href="{% url 'core:signup' %}" class="text-indigo-600 font-bold hover:underline">Create Account</a>
 {% endblock %}
 
 === templates/core/product_detail.html ===
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
-{% if listing.image %}
-<img src="{{ listing.image.url }}" class="w-full h-full object-cover">
+<a href="{% url 'core:index' %}" class="text-slate-400 hover:text-indigo-600 transition">Market</a>
+<a href="#" class="text-slate-400 hover:text-indigo-600 transition">{{ listing.category.name }}</a>
+<span class="text-indigo-600 font-bold">{{ listing.title|truncatechars:30 }}</span>
+{% if listing.media %}
+{% if listing.is_video %}
+<video controls class="w-full h-full object-cover" poster="{% if listing.media %}{{ listing.media.url }}{% endif %}">
+<source src="{{ listing.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ listing.media.url }}" alt="{{ listing.title }}"
+{% endif %}
 {% else %}
 {% endif %}
-<a href="{% url 'core:index' %}" class="hover:text-indigo-600">Market</a>
-<span class="text-indigo-600">{{ listing.category.name }}</span>
-{{ listing.title }}
-<span class="text-4xl font-black text-indigo-600">${{ listing.price }}</span>
-Condition: {{ listing.condition|default:"Standard" }}
-{{ listing.description }}
-<button onclick="addToCart(event, '{{ listing.id }}')"
-{% if request.user != listing.trader %}
+{% if listing.media %}
+{% if listing.is_video %}
+<source src="{{ listing.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ listing.media.url }}" class="w-full h-full object-cover">
+{% endif %}
+{% endif %}
+{{ listing.get_trade_type_display }}
+{% if listing.condition != 'NONE' %}
+{{ listing.get_condition_display }}
+{% endif %}
+{% if listing.trade_type == 'AUCTION' %}
+{% endif %}
+<h1 class="text-4xl font-black text-slate-800 mb-2">{{ listing.title }}</h1>
+<span class="text-5xl font-black text-indigo-600">${{ listing.price }}</span>
+{% if listing.trade_type == 'WHOLESALE' and listing.wholesale_data %}
+<span class="text-sm text-slate-500">Min order: {{ listing.wholesale_data.min_order_qty }} {{ listing.wholesale_data.unit_name }}</span>
+{% endif %}
+{% if listing.trade_type == 'AUCTION' and listing.time_remaining %}
+{{ listing.time_remaining.days }}d {{ listing.time_remaining.hours }}h {{ listing.time_remaining.minutes }}m
+{% endif %}
+{{ listing.trader.username|slice:":1"|upper }}
+<p class="font-bold text-slate-800">{{ listing.trader.username }}</p>
+<span class="text-xs font-bold text-green-600">{{ listing.trader.profile.trust_score }}%</span>
+<p class="text-slate-600 leading-relaxed">{{ listing.description }}</p>
+<p class="font-bold text-sm">{{ listing.category.name }}</p>
+<p class="font-bold text-sm">{{ listing.created_at|date:"M d, Y" }}</p>
+{% if listing.wholesale_data %}
+<p class="font-bold text-sm">{{ listing.wholesale_data.min_order_qty }}</p>
+<p class="font-bold text-sm">{{ listing.wholesale_data.unit_name }}</p>
+{% endif %}
+{% if listing.service_data %}
+<p class="font-bold text-sm">{{ listing.service_data.vehicle_info|default:"Available" }}</p>
+{% endif %}
+{% if request.user == listing.trader %}
+<a href="{% url 'core:delete_listing' listing.pk %}"
+{% else %}
+<button onclick="addToBundle(event, '{{ listing.id }}')"
 <a href="{% url 'core:negotiate' listing.pk %}"
+{% endif %}
+{% for related in related_listings %}
+<a href="{% url 'core:product_detail' related.pk %}" class="group bg-white border border-slate-100 rounded-xl overflow-hidden hover:shadow-lg transition">
+{% if related.media %}
+{% if related.is_video %}
+<source src="{{ related.media.url }}" type="video/mp4">
+{% else %}
+<img src="{{ related.media.url }}" class="w-full h-full object-cover group-hover:scale-110 transition">
+{% endif %}
 {% else %}
 {% endif %}
+<h3 class="font-bold text-slate-800 truncate">{{ related.title }}</h3>
+<p class="text-indigo-600 font-black mt-1">${{ related.price }}</p>
+{% empty %}
+{% endfor %}
+'X-CSRFToken': '{{ csrf_token }}',
 {% endblock %}
 
 === templates/core/signup.html ===
@@ -644,8 +861,67 @@ Condition: {{ listing.condition|default:"Standard" }}
 {{ field.label }}
 {{ field }}
 {% if field.errors %}
-<p class="text-red-500 text-[10px] italic">{{ field.errors.0 }}</p>
+<p class="text-red-500 text-[10px] italic mt-1">{{ field.errors.0 }}</p>
+{% endif %}
+{% if field.help_text %}
+<p class="text-slate-400 text-[9px] mt-1">{{ field.help_text }}</p>
 {% endif %}
 {% endfor %}
 <a href="{% url 'login' %}" class="text-indigo-600 font-bold hover:underline">Log In</a>
 {% endblock %}
+
+=== test_cloudinary.py ===
+import os
+import django
+import sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'soso_config.settings')
+django.setup()
+from django.conf import settings
+import cloudinary
+import cloudinary.api
+import cloudinary.uploader
+def test_cloudinary():
+print("🔍 Testing Cloudinary Connection...\n")
+print("1. Checking Settings:")
+try:
+cloud_name = settings.CLOUDINARY_STORAGE['CLOUD_NAME']
+api_key = settings.CLOUDINARY_STORAGE['API_KEY']
+api_secret = settings.CLOUDINARY_STORAGE['API_SECRET'][:5] + '...'
+print(f" ✅ Cloud Name: {cloud_name}")
+print(f" ✅ API Key: {api_key[:5]}...")
+print(f" ✅ API Secret: {api_secret}")
+except Exception as e:
+print(f" ❌ Settings Error: {e}")
+return False
+print("\n2. Testing API Connection:")
+try:
+result = cloudinary.api.ping()
+print(f" ✅ Connected! Status: {result.get('status', 'OK')}")
+except Exception as e:
+print(f" ❌ Connection Failed: {e}")
+return False
+print("\n3. Testing Upload:")
+try:
+test_content = b"test image data"
+with open('test_upload.txt', 'wb') as f:
+f.write(test_content)
+result = cloudinary.uploader.upload(
+'test_upload.txt',
+folder='test_folder',
+public_id='test_file'
+)
+print(f" ✅ Upload Successful!")
+print(f" 📍 URL: {result['url']}")
+print(f" 🆔 Public ID: {result['public_id']}")
+os.remove('test_upload.txt')
+print("\n4. Testing Delete:")
+cloudinary.uploader.destroy(result['public_id'])
+print(" ✅ Delete Successful!")
+except Exception as e:
+print(f" ❌ Upload Failed: {e}")
+return False
+print("\n✅ All Cloudinary tests passed!")
+return True
+if __name__ == '__main__':
+success = test_cloudinary()
+sys.exit(0 if success else 1)

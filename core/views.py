@@ -123,6 +123,7 @@ def signup(request):
         form = SosoSignupForm()
     return render(request, 'core/signup.html', {'form': form})
 
+
 @login_required
 def create_listing(request):
     if request.method == 'POST':
@@ -131,16 +132,19 @@ def create_listing(request):
             listing = l_form.save(commit=False)
             listing.trader = request.user
             listing.save()
-            
+
             if listing.trade_type == 'WHOLESALE':
-                w_form = WholesaleForm(request.POST, instance=listing)
+                w_form = WholesaleForm(request.POST)
                 if w_form.is_valid():
-                    w_form.save()
+                    wholesale = w_form.save(commit=False)
+                    wholesale.listing = listing
+                    wholesale.save()
             elif listing.trade_type == 'SERVICE':
-                s_form = ServiceForm(request.POST, instance=listing)
+                s_form = ServiceForm(request.POST)
                 if s_form.is_valid():
-                    s_form.save()
-            
+                    service = s_form.save(commit=False)
+                    service.listing = listing
+                    service.save()
             return redirect('core:product_detail', pk=listing.pk)
     else:
         l_form = ListingForm()
@@ -148,10 +152,9 @@ def create_listing(request):
         s_form = ServiceForm()
     
     return render(request, 'core/create_listing.html', {
-        'l_form': l_form,
-        'w_form': w_form,
-        's_form': s_form
+        'l_form': l_form, 'w_form': w_form, 's_form': s_form
     })
+
 
 @login_required
 def negotiate(request, pk):
