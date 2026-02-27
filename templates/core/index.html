@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block content %}
-<!-- Carousel Section -->
 {% if featured_listings %}
 <div class="relative mb-8 overflow-hidden rounded-3xl">
     <div id="carousel" class="flex transition-transform duration-500 ease-in-out">
@@ -31,7 +30,6 @@
         {% endfor %}
     </div>
     
-    <!-- Carousel Controls -->
     <button id="prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg hover:bg-white">
         ←
     </button>
@@ -39,7 +37,6 @@
         →
     </button>
     
-    <!-- Dots -->
     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
         {% for featured in featured_listings %}
         <button class="carousel-dot w-2 h-2 rounded-full bg-white/50 hover:bg-white" data-index="{{ forloop.counter0 }}"></button>
@@ -79,7 +76,6 @@ document.querySelectorAll('.carousel-dot').forEach(dot => {
     });
 });
 
-// Auto-advance every 5 seconds
 setInterval(() => {
     currentIndex = (currentIndex + 1) % totalSlides;
     updateCarousel();
@@ -87,13 +83,11 @@ setInterval(() => {
 </script>
 {% endif %}
 
-<!-- Hero Section -->
 <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-8 mb-8">
     <h1 class="text-5xl font-black mb-2">SOSO <span class="text-indigo-600">Market</span></h1>
     <p class="text-slate-600 text-lg">Bundle, Haggle, Trade — The Wild West of E-commerce</p>
 </div>
 
-<!-- Categories -->
 <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
     <a href="{% url 'core:index' %}" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold whitespace-nowrap">All Items</a>
     {% for category in categories %}
@@ -101,11 +95,9 @@ setInterval(() => {
     {% endfor %}
 </div>
 
-<!-- Products Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3 md:gap-6">
     {% for item in listings %}
     <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-        <!-- Image/Video Container -->
         <a href="{% url 'core:product_detail' item.pk %}" class="block aspect-square bg-slate-100 overflow-hidden relative">
             {% if item.media %}
                 {% if item.is_video %}
@@ -119,78 +111,54 @@ setInterval(() => {
                 {% endif %}
             {% else %}
                 <div class="w-full h-full flex items-center justify-center bg-slate-200">
-                    <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                 </div>
             {% endif %}
             
-            <!-- Trade Type Badge -->
-            <span class="absolute top-2 left-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+            <span class="absolute top-1.5 left-1.5 bg-indigo-600 text-white text-[8px] md:text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {{ item.get_trade_type_display }}
             </span>
             
-            <!-- Condition Badge -->
             {% if item.condition != 'NONE' %}
-            <span class="absolute top-2 right-2 bg-white/90 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
+            <span class="absolute top-1.5 right-1.5 bg-white/90 text-slate-600 text-[8px] md:text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {{ item.get_condition_display }}
             </span>
             {% endif %}
         </a>
 
-        <!-- Product Info -->
-        <div class="p-4">
-            <div class="mb-2">
-                <p class="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-1">{{ item.category.name }}</p>
-                <h3 class="font-bold text-slate-800 truncate">{{ item.title }}</h3>
+        <div class="p-3 md:p-4">
+            <div class="mb-1 md:mb-2">
+                <p class="text-[8px] md:text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-0.5">{{ item.category.name }}</p>
+                <h3 class="font-bold text-slate-800 truncate text-xs md:text-sm">{{ item.title }}</h3>
             </div>
             
-            <!-- Price -->
-            <div class="flex items-baseline gap-2 mb-3">
-                <span class="text-2xl font-black text-indigo-600">${{ item.price }}</span>
-                {% if item.trade_type == 'WHOLESALE' and item.wholesale_data %}
-                <span class="text-[10px] text-slate-400">Min: {{ item.wholesale_data.min_order_qty }}</span>
-                {% endif %}
+            <div class="flex items-baseline gap-1 mb-2">
+                <span class="text-sm md:text-xl font-black text-indigo-600">${{ item.price }}</span>
             </div>
 
-            <!-- Trader Info -->
-            <div class="flex items-center gap-2 mb-4">
-                <div class="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <span class="text-indigo-600 font-black text-xs">{{ item.trader.username|slice:":1"|upper }}</span>
+            <div class="flex items-center gap-1.5 mb-3">
+                <div class="w-5 h-5 bg-indigo-100 rounded flex items-center justify-center">
+                    <span class="text-indigo-600 font-black text-[10px]">{{ item.trader.username|slice:":1"|upper }}</span>
                 </div>
-                <span class="text-xs text-slate-500">{{ item.trader.username }}</span>
-                <span class="text-[8px] text-green-600 font-bold">● {{ item.trader.profile.trust_score }}%</span>
+                <span class="text-[10px] text-slate-500 truncate">{{ item.trader.username }}</span>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex gap-2">
+            <div class="flex flex-col md:flex-row gap-1.5">
                 {% if request.user == item.trader %}
-                    <!-- Owner: Remove Listing -->
                     <a href="{% url 'core:delete_listing' item.pk %}" 
-                       onclick="return confirm('Are you sure you want to remove this listing?');"
-                       class="w-full bg-red-500 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-red-600 transition flex items-center justify-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
+                       onclick="return confirm('Are you sure?');"
+                       class="w-full bg-red-500 text-white py-1.5 rounded-lg font-bold text-[9px] md:text-xs text-center">
                         REMOVE
                     </a>
                 {% else %}
-                    <!-- Add to Bundle Button -->
                     <button onclick="addToBundle(event, '{{ item.id }}')" 
-                            class="flex-1 bg-slate-900 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-600 transition flex items-center justify-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
+                            class="flex-1 bg-slate-900 text-white py-1.5 rounded-lg font-bold text-[9px] md:text-xs hover:bg-indigo-600 transition">
                         BUNDLE
                     </button>
-                    
-                    <!-- Negotiate Button -->
                     <a href="{% url 'core:negotiate' item.pk %}" 
-                       class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                        </svg>
+                       class="flex-1 bg-indigo-600 text-white py-1.5 rounded-lg font-bold text-[9px] md:text-xs text-center hover:bg-indigo-700 transition">
                         CHAT
                     </a>
                 {% endif %}
@@ -198,29 +166,12 @@ setInterval(() => {
         </div>
     </div>
     {% empty %}
-    <!-- Empty State -->
     <div class="col-span-full text-center py-16">
-        <div class="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
-            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-            </svg>
-        </div>
         <h3 class="text-xl font-bold text-slate-800 mb-2">No items yet</h3>
-        <p class="text-slate-400 mb-4">Be the first to list something!</p>
-        {% if user.is_authenticated %}
-        <a href="{% url 'core:create_listing' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
-            SELL SOMETHING
-        </a>
-        {% else %}
-        <a href="{% url 'core:login' %}" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
-            LOGIN TO SELL
-        </a>
-        {% endif %}
     </div>
     {% endfor %}
 </div>
 
-<!-- JavaScript for Add to Bundle -->
 <script>
 function addToBundle(event, listingId) {
     event.preventDefault();
@@ -236,39 +187,25 @@ function addToBundle(event, listingId) {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'ok') {
-            // Update cart count in navbar
             const cartBadge = document.querySelector('.cart-count');
             if (cartBadge) {
                 cartBadge.textContent = data.cart_count;
                 cartBadge.classList.remove('hidden');
-            } else {
-                // Create badge if it doesn't exist
-                const cartIcon = document.querySelector('.relative');
-                if (cartIcon && data.cart_count > 0) {
-                    const badge = document.createElement('span');
-                    badge.className = 'absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold cart-count';
-                    badge.textContent = data.cart_count;
-                    cartIcon.appendChild(badge);
-                }
             }
             
-            // Show success message on button
             const button = event.currentTarget;
             const originalText = button.innerHTML;
             button.innerHTML = '✓ ADDED';
             button.classList.add('bg-green-600');
-            button.classList.remove('bg-slate-900');
             setTimeout(() => {
                 button.innerHTML = originalText;
                 button.classList.remove('bg-green-600');
-                button.classList.add('bg-slate-900');
             }, 1500);
         }
     })
     .catch(error => console.error('Error:', error));
 }
 
-// Auto-play videos on hover
 document.querySelectorAll('video').forEach(video => {
     video.addEventListener('mouseenter', () => video.play());
     video.addEventListener('mouseleave', () => {
