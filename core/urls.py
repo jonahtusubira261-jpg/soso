@@ -20,5 +20,5 @@ urlpatterns = [
     path('list-item/', views.create_listing, name='create_listing'),
     path('delete-listing/<int:pk>/', views.delete_listing, name='delete_listing'),
     path('search/', views.search_autocomplete, name='search'),
-    path('health/', health_check, name='health_check'
+    path('health/', health_check, name='health_check',
 ]
