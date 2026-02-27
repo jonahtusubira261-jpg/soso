@@ -9,10 +9,12 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 import json
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
+@csrf_exempt
 def health_check(request):
-    # Returns a 200 OK status
-    return HttpResponse("OK", content_type="text/plain")
+    # This responds to GET, HEAD, etc.
+    return HttpResponse("OK")
 
 def index(request):
     listings = Listing.objects.filter(is_active=True).select_related('category', 'trader__profile').order_by('-created_at')
