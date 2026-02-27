@@ -8,6 +8,11 @@ from .forms import ListingForm, WholesaleForm, ServiceForm, SosoSignupForm
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 import json
+from django.http import HttpResponse
+
+def health_check(request):
+    # Returns a 200 OK status
+    return HttpResponse("OK", content_type="text/plain")
 
 def index(request):
     listings = Listing.objects.filter(is_active=True).select_related('category', 'trader__profile').order_by('-created_at')
