@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from core.views import health_check
 
 app_name = 'core'
 
@@ -19,4 +20,5 @@ urlpatterns = [
     path('list-item/', views.create_listing, name='create_listing'),
     path('delete-listing/<int:pk>/', views.delete_listing, name='delete_listing'),
     path('search/', views.search_autocomplete, name='search'),
+    path('health/', health_check, name='health_check'
 ]
