@@ -20,7 +20,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-chang
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Add your Render URL to allowed hosts
-ALLOWED_HOSTS = ['.render.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['soso-4cw3.onrender.com', 'localhost', '127.0.0.1']
 
 
 # --- CLOUDINARY CONFIGURATION ---
