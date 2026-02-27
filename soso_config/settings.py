@@ -20,8 +20,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-chang
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Add your Render URL to allowed hosts
-ALLOWED_HOSTS = ['soso-4cw3.onrender.com', 'localhost', '127.0.0.1']
+# --- SECURITY SETTINGS ---
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'soso-4cw3.onrender.com']
+
+# Add this to fix the "Origin checking failed" error
+CSRF_TRUSTED_ORIGINS = [
+    'https://soso-4cw3.onrender.com',
+    'https://*.render.com'
+]
 
 # --- CLOUDINARY CONFIGURATION ---
 # We use os.environ.get to pull from .env locally or Render in production
